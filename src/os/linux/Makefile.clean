@@ -1,0 +1,49 @@
+include $(RT28xx_DIR)/os/linux/config.mk
+DIR=$(RT28xx_DIR)
+
+PHONY := clean install uninstall
+
+clean:
+	-rm $(DIR)/common/*.o
+	-rm $(DIR)/common/.*.{cmd,flags,d}
+	-rm $(DIR)/os/linux/*.{o,ko,mod.{o,c}}
+	-rm $(DIR)/os/linux/.*.{cmd,flags,d}
+	-rm -r $(DIR)/os/linux/.tmp_versions
+#Must clean Module.symvers; or you will suffer symbol version not match
+#when OS_ABL = YES.
+	-rm $(DIR)/os/linux/Module.symvers
+	-rm $(DIR)/os/linux/Modules.symvers
+	-rm $(DIR)/os/linux/Module.markers
+	-rm $(DIR)/os/linux/modules.order
+	-rm $(DIR)/chips/*.o
+	-rm $(DIR)/chips/.*.{cmd,flags,d}
+	-rm $(DIR)/rate_ctrl/*.o
+	-rm $(DIR)/rate_ctrl/.*.{cmd,flags,d}
+	-rm $(DIR)/ate/common/*.o
+	-rm $(DIR)/ate/common/.*.{cmd,flags,d}
+	-rm $(DIR)/ate/chips/*.o
+	-rm $(DIR)/ate/chips/.*.{cmd,flags,d}
+ifeq ($(RT28xx_MODE),AP)
+	-rm $(DIR)/ap/*.o
+	-rm $(DIR)/ap/.*.{cmd,flags,d}
+else
+ifeq ($(RT28xx_MODE),STA)
+	-rm $(DIR)/sta/*.o
+	-rm $(DIR)/sta/.*.{cmd,flags,d}
+ifeq ($(HAS_P2P_SUPPORT),y)
+	-rm $(DIR)/ap/*.o
+	-rm $(DIR)/ap/.*.{cmd,flags,d}
+endif
+else
+ifeq ($(RT28xx_MODE),APSTA)
+	-rm $(DIR)/ap/*.o
+	-rm $(DIR)/ap/.*.{cmd,flags,d}
+	-rm $(DIR)/sta/*.o
+	-rm $(DIR)/sta/.*.{cmd,flags,d}
+endif
+endif
+endif
+
+# Declare the contents of the .PHONY variable as phony.  We keep that
+# information in a variable so we can use it in if_changed and friends.
+.PHONY: $(PHONY)

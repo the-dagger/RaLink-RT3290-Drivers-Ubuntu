@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# bash script to run sh file in the terminal emulators
+
+# Copyright (C) 2015 Md Imam Hossain
+
+# License
+#	This program is free software; you can use it for any purposes but can not redistribute it and/or modify it.
+#	This program is distributed in the hope that it will be useful but WITHOUT ANY WARRANTY.
+
+cd "`dirname "$0"`"
+
+modprobe rt3290sta
+
+if [ "$?" -ne 0 ]
+then
+    exit 1
+fi
+
+for i in `ifconfig -s -a | cut -f1 -d " "`;
+do
+    if [ "$i" != "Iface" ]
+    then
+        ifconfig $i up
+        if [ "$?" -ne 0 ]
+        then
+            exit 1
+        fi
+    fi
+done
+
+service network-manager restart
+
+update-rc.d activate-net-rt defaults
+
+exit 0
