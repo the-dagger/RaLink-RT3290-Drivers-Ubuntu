@@ -104,14 +104,27 @@ VOID RtmpUtilInit(
 	}
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+static void legacy_timer_emu_func(struct timer_list *t)
+{
+	struct legacy_timer_emu *lt = from_timer(lt, t, t);
+	lt->function(lt->data);
+}
+#endif
+
 /* timeout -- ms */
 static inline VOID __RTMP_SetPeriodicTimer(
 	IN OS_NDIS_MINIPORT_TIMER * pTimer,
 	IN unsigned long timeout)
 {
 	timeout = ((timeout * OS_HZ) / 1000);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	(&pTimer->t)->expires = jiffies + timeout;
+	add_timer(&pTimer->t);
+#else
 	pTimer->expires = jiffies + timeout;
 	add_timer(pTimer);
+#endif
 }
 
 /* convert NdisMInitializeTimer --> RTMP_OS_Init_Timer */
@@ -121,8 +134,13 @@ static inline VOID __RTMP_OS_Init_Timer(
 	IN TIMER_FUNCTION function,
 	IN PVOID data)
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	if (!timer_pending(&pTimer->t)) {
+		timer_setup(&pTimer->t, legacy_timer_emu_func, 0);
+#else
 	if (!timer_pending(pTimer)) {
 		init_timer(pTimer);
+#endif
 		pTimer->data = (unsigned long)data;
 		pTimer->function = function;
 	}
@@ -132,12 +150,21 @@ static inline VOID __RTMP_OS_Add_Timer(
 	IN OS_NDIS_MINIPORT_TIMER * pTimer,
 	IN unsigned long timeout)
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	if (timer_pending(&pTimer->t))
+		return;
+
+	timeout = ((timeout * OS_HZ) / 1000);
+	(&pTimer->t)->expires = jiffies + timeout;
+	add_timer(&pTimer->t);
+#else
 	if (timer_pending(pTimer))
 		return;
 
 	timeout = ((timeout * OS_HZ) / 1000);
 	pTimer->expires = jiffies + timeout;
 	add_timer(pTimer);
+#endif
 }
 
 static inline VOID __RTMP_OS_Mod_Timer(
@@ -145,15 +172,24 @@ static inline VOID __RTMP_OS_Mod_Timer(
 	IN unsigned long timeout)
 {
 	timeout = ((timeout * OS_HZ) / 1000);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	mod_timer(&pTimer->t, jiffies + timeout);
+#else
 	mod_timer(pTimer, jiffies + timeout);
+#endif
 }
 
 static inline VOID __RTMP_OS_Del_Timer(
 	IN OS_NDIS_MINIPORT_TIMER * pTimer,
 	OUT BOOLEAN *pCancelled)
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	if (timer_pending(&pTimer->t))
+		*pCancelled = del_timer_sync(&pTimer->t);
+#else
 	if (timer_pending(pTimer))
 		*pCancelled = del_timer_sync(pTimer);
+#endif
 	else
 		*pCancelled = TRUE;
 }
